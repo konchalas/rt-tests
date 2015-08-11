@@ -41,4 +41,4 @@ for clocksource in /sys/devices/system/clocksource/clocksource*/current_clocksou
 	n=$(( $n + 1 ))
 done
 
-/usr/bin/time cyclictest -n -q -p 99 -a -t -i 250 -H 1000 -m $NLOOPS 	
+/usr/bin/time cyclictest -n -q -p 99 -a -t -D 1000-i 250 -H 1000000 -m 
