@@ -88,7 +88,7 @@ echo "
 set xlabel \"Preemption Time (us)\"
 set ylabel \"Number of Samples\"
 set logscale y
-set xrange [0:150]
+set xrange [0:600]
 set grid
 show grid
 set xtic auto
@@ -98,6 +98,6 @@ set terminal pdf
 set output \"${PLTFILE}.pdf\"
 $PLOTCMD" | gnuplot - > /dev/null || exit 1
 
-echo "Histogram created: ${PLTFILE}.png"
+echo "Histogram created: ${PLTFILE}.pdf"
 
 echo 0
