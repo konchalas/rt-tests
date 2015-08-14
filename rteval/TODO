@@ -1,0 +1,26 @@
+#
+# This is just a random list of things that I think need to be done
+# to rteval
+#
+
+1. Figure out how to add more loads. Seems that we could do it two ways:
+
+   - create a wrapper python module just like is done for kcompile and hackbench
+     then add the new module to a config file so rteval loads it on startup
+     (i.e. a plugin architecture)
+
+   - figure out some generic load wrapper so that arbitrary commands may be
+     used as loads. 
+
+2. Should we add a hwlatdetect option?
+
+3. Potential new loads/measurements:
+   - dbench
+   - AMQP latencytest/perftest (over loopback)
+   - bonnie/bonnie++
+   - iozone
+   - KVM running guest OS
+
+4. Add an option to run 'perf record' while  a run is in progress. This is
+   mainly a diagnostic option to debug *why* something is performing 
+   poorly.

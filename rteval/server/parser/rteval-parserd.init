@@ -1,0 +1,126 @@
+#!/bin/bash
+#
+# rteval-parserd  rteval report parser daemon
+#
+# Author:      David Sommerseth <davids@redhat.com>
+#
+# Copyright 2009 Red Hat, Inc. and/or its affiliates.
+# Released under the GPL
+#
+# chkconfig: - 20 80
+# description: The rteval-parserd waits for rteval summary reports and parses them on arrival
+# config: /etc/sysconfig/rteval-parserd
+#
+### BEGIN INIT INFO
+# Provides: rteval-parserd
+# Required-Start: postgresql
+# Required-Stop: -
+# Default-Stop: 0 1 6
+# Short-Description: start and stop rteval-parserd
+# Description: The rteval-parserd waits for rteval summary reports and parses them on arrival
+### END INIT INFO
+
+. /etc/rc.d/init.d/functions
+
+if [ -f /etc/sysconfig/rteval-parserd ]; then
+    . /etc/sysconfig/rteval-parserd
+fi
+
+prog=rteval-parserd
+RETVAL=0
+
+if [ -z $PIDFILE ]; then
+    PIDFILE=/var/run/$prog.pid
+fi
+
+start() {
+    # Check if we have a pid file, if we do check that it is correct
+    if [ -f $PIDFILE ]; then
+	filepid=$(cat $PIDFILE)
+	chkpid=$(pidof $prog)
+	if [ $? = 0 ]; then
+	    if [ "$chkpid" != "$filepid" ] ; then
+		# We have a pid file which is not correct, fix it
+		echo $chkpid > $PIDFILE
+		filepid=$chkpid
+	    fi
+	    echo "$prog is already started (pid $filepid)"
+	    return 0
+	else
+	    # No process really exists, clean up!
+	    rm -f $PIDFILE
+	fi
+    fi
+
+    # Start a new daemon
+    args="--daemon"
+    if [ -z "$NUM_THREADS" ]; then
+	# If NUM_THREADS is not set, use number of cores found.
+	NUM_THREADS=$(find /sys/devices/system/cpu/cpu? -maxdepth 0 -type d | wc -l)
+    fi
+    args="$args --threads $NUM_THREADS"
+
+    if [ ! -z "$LOG" ]; then
+	args="$args --log $LOG"
+    fi
+
+    if [ ! -z "$LOGLEVEL" ]; then
+	args="$args --log-level $LOGLEVEL"
+    fi
+
+    if [ ! -z "$CONFIGFILE" ]; then
+	args="$args --config $CONFIGFILE"
+    fi
+    echo -n $"Starting $prog ($NUM_THREADS threads): "
+    $prog $args
+    pidof $prog > $PIDFILE
+    RETVAL=$?
+    [ $RETVAL = 0 ] && success $"$prog startup" || failure $"$prog startup"
+    [ $RETVAL = 0 ] && touch /var/lock/subsys/$prog
+    echo
+    return $RETVAL
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    if [ ! -f $PIDFILE ]; then
+	chkpid=$(pidof $prog)
+	if [ $? = 0 ]; then
+	    PID=$chkpid
+	fi
+    else
+	PID=$(cat $PIDFILE)
+    fi
+    kill -TERM $PID
+    RETVAL=$?
+    [ $RETVAL = 0 ] && success $"$prog shutdown" || failure $"$prog (pid $PID) shutdown"
+    [ $RETVAL = 0 ] && rm -f /var/lock/subsys/$prog $PIDFILE
+    echo
+}
+
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  status)
+        status $prog
+	;;
+  restart)
+	stop
+	start
+	;;
+  reload)
+	stop
+	start
+	;;
+  condrestart)
+        ;;
+  *)
+	echo $"Usage: $prog {start|stop|restart|reload|status|help}"
+	RETVAL=3
+esac
+
+exit $RETVAL

@@ -1,0 +1,33 @@
+The rteval utility requires some external software libraries to run
+properly. These are:
+
+python-schedutils
+  A python library to manipulate priority and affinty of threads
+  git://git.kernel.org/pub/scm/linux/kernel/git/acme/python-schedutils.git
+
+python-ethtool
+  A python library to query network interfaces
+  git://git.kernel.org/pub/scm/linux/kernel/git/acme/python-ethtool.git
+
+libxslt-python
+  A python library to parse XSLT stylesheets
+  http://www.xmlsoft.org/XSLT/python.html
+
+python-dmidecode
+  A python library used to access DMI table information
+  http://www.autonomy.net.au/display/pydmi/Home
+
+rt-tests
+  A collection of programs used to measure real-time behavior
+  git://git.kernel.org/pub/scm/linux/kernel/git/clrkwllms/rt-tests.git
+
+So, to install rteval on a Fedora 11 (or newer) system:
+
+$ sudo yum install python-{dmidecode,ethtool,schedutils}
+$ git clone \
+  git://git.kernel.org/pub/scm/linux/kernel/git/clrkwllms/rt-tests.git
+$ cd rt-tests && sudo make prefix=/usr install
+$ cd ../rteval
+$ sudo make install
+
+That should do it (I hope).

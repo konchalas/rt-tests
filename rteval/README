@@ -1,0 +1,43 @@
+
+Rteval is a python program written to evaluate the performance of a
+realtime Linux kernel on a particular hardware platform. The program
+unpacks source code for two loads: hackbench and a Linux kernel
+compile, then loops running hackbench and a parallel build of the
+Linux kernel. While the loads are running, the cyclictest program is
+run to measure realtime performance under load. When the specified run
+duration is met, the loads are stopped and cyclictest outputs measured
+timer latency values in histogram format, which is analyzed by
+rteval. Rteval then writes an XML file to disk with information about
+the system (gotten through DMI tables), the raw histogram data
+collected during the run and the statistical analysis of the run. 
+
+The rteval source may be pulled from it's git tree on kernel.org:
+    git://git.kernel.org/pub/scm/linux/kernel/git/clrkwllms/rteval.git
+
+Rteval requires the following packages to run:
+
+Python >= 2.4 (and < 3.0)
+    http://www.python.org/download/
+
+python-schedtils
+    git://git.kernel.org/pub/scm/linux/kernel/git/acme/python-schedutils.git
+
+python-ethtools
+    git://git.kernel.org/pub/scm/linux/kernel/git/acme/python-ethtool.git
+
+libxslt-python
+    http://xmlsoft.org/XSLT/python.html
+
+python-dmidecode
+    http://www.ohloh.net/p/python-dmidecode
+
+rt-tests
+   git://git.kernel.org/pub/scm/linux/kernel/git/clrkwllms/rt-tests.git
+
+
+Clark Williams <williams@redhat.com> wrote rteval
+David Sommerseth <davids@redhat.com> wrote the XML-RPC and database
+     logic for handling rteval results. 
+
+
+

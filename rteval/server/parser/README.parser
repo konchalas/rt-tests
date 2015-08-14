@@ -1,0 +1,197 @@
+**
+**  rteval-parsed - the rteval XML report parser
+**
+
+The purpose of the daemon is to off load the web server from the heavy duty
+work of parsing and processing the rteval XML reports.  The XML-RPC server
+will receive the reports and put the files in a queue directory on the
+file system and register the the submission in the database.  This will notify
+the rteval-parsed that a new report has been received and it will start
+processing that file independently of the web/XML-RPC server.
+
+
+** Installing the software
+
+  !! Please install also the rteval-xmlrpc package and read the !!
+  !! README.xmlrpc file also for setting up and preparing the   !!
+  !! database which the rteval-parserd program will be using.   !!
+  !! This file will also contain information regardingupgrading !!
+  !! the database.                                              !!
+
+When installing this application from a binary package, like RPM
+files on Fedora/RHEL based boxes, you should have the rteval-parserd
+in your $PATH.  Otherwise, when installing from sources, the configure
+script defines the default paths.
+
+
+** Configure rteval-parsed
+
+When starting the rteval-parserd via the init.d script (or via the 'service'
+command on RHEL/Fedora distributions) it will use the values configured in
+/etc/sysconfig/rteval-parserd.
+
+The available parameters are:
+
+    - NUM_THREADS
+      When this is not defined, the default behaviour is to use the number
+      of available CPU cores.  The init.d script will detect this
+      automatically.
+
+    - LOG
+      This defines how logging will be done.  See the rteval-parserd
+      arguments description further down in the document for more
+      information.
+
+    - LOGLEVEL
+      Defines how verbose the logging will be.  See the rteval-parserd
+      arguments description further down in the document for more
+      information.
+
+    - CONFIGFILE
+      The default configuration file rteval-parserd will try to read is
+      /etc/rteval.conf.  See the next paragraph for more information about
+      this file.  This argument let you override the default config file.
+
+    - PIDFILE
+      Defines where the init.d script will put the PID file for the
+      rteval-parserd process.  The default is /var/run/rteval-parserd.pid
+
+This daemon uses the same configuration file as the rest of the rteval program
+suite, /etc/rteval.conf.  It will parse the section named 'xmlrpc_parser'.
+
+The default values are:
+
+  - xsltpath: /usr/share/rteval
+    Defines where it can find the xmlparser.xsl XSLT template
+
+  - db_server: localhost
+    Which database server to connect to
+
+  - db_port: 5432
+    Which port to use for the database connection
+
+  - database: rteval
+    Which database to make use of.
+
+  - db_username: rtevparser
+    Which user name to use for the connection
+
+  - db_password: rtevaldb_parser
+    Which password to use for the authentication
+
+  - reportdir: /var/lib/rteval/report
+    Where to save the parsed reports
+
+  - threads: 4
+    Number of worker threads.  This defines how many reports you will
+    process in parallel.  The recommended number here is the number
+    of available CPU cores, as having a higher thread number often
+    punishes the performance.  The default value is 4 when rteval-parserd
+    is started directly.  When started via the init.d script, the default
+    is to start one thread per CPU core.
+
+  - max_report_size: 2097152
+    Maximum file size of reports which the parser will process.  The
+    default value is 2MB.  The value must be given in bytes.  Remember
+    that this value is per thread, and that XML and XSLT processing can
+    be quite memory hungry.  If this value is set too high or you have too
+    many worker threads, your system might become unresponsive for a while
+    and the parser might be killed by the kernel (OOM).
+
+
+** rteval-parserd arguments
+
+  -d | --daemon                    Run as a daemon
+  -l | --log        <log dest>     Where to put log data
+  -L | --log-level  <verbosity>    What to log
+  -f | --config     <config file>  Which configuration file to use
+  -t | --threads    <num. threads> How many worker threads to start (def: 4)
+  -h | --help                      This help screen
+
+- Configuration file
+By default the program will look for /etc/rteval.conf.  This can be
+overridden by using --config <config file>.
+
+- Logging
+When the program is started as a daemon, it will log to syslog by default.
+The default log level is 'info'.  When not started as a daemon, all logging
+will go to stderr by default.
+
+The --log argument takes either 'destination' or a file name.  Unknown
+destinations are treated as filenames.  Valid 'destinations' are:
+
+    stderr:             - Log to stderr
+    stdout:             - Log to stdout
+    syslog:[facility]   - Log to syslog
+    <file name>         - Log to given file
+
+For syslog the default facility is 'daemon', but can be overridden by using
+one of the following facility values:
+    daemon, user and local0 to local7
+
+Log verbosity is set by the --log-level.  The valid values here are:
+
+    emerg, emergency    - Only log errors which causes the program to stop
+    alert               - Incidents which needs immediate attention
+    crit, critical      - Unexpected incidents which is not urgent
+    err, error          - Parsing errors.  Issues with input data
+    warn, warning       - Incidents which may influence performance
+    notice              - Less important warnings
+    info                - General run information
+    debug               - Detailed run information, incl. thread operation
+
+- Threads
+By default, the daemon will use five threads.  One for the main threads which
+processes the submission queue and notifies the working threads.  The four
+other threads are worker threads, which will process the received reports.
+
+Each of the worker threads will have its own connection to the database.  This
+connection will be connected to the database as long as the daemon is running.
+It is therefore important that you do not have more worker threads than
+available database connections.
+
+
+** POSIX Message Queue
+
+The daemon makes use of POSIX MQ for distributing work to the worker threads.
+Each thread lives independently and polls the queue regularly for more work.
+As the POSIX MQ has a pretty safe mechanism of not duplicating messages in the
+implementation, no other locking facility is needed.
+
+On Linux, the default value for maximum messages in the queue are set to 10.
+If you receive a lot of reports and the threads do not process the queue
+quickly enough, it will fill up pretty quickly.  If the queue is filled up,
+the main thread which populates the message queue will politely go to sleep
+for one minute before attempting to send new messages.  To avoid this, consider
+to increase the queue size by modifying /proc/sys/fs/mqueue/msg_max.
+
+When the daemon initialises itself, it will read this file to make sure it
+uses the queue to the maximum, but not beyond that.
+
+
+** PostgreSQL features
+
+The daemon depends on the PostgreSQL database.  It is written with an
+abstraction layer so it should, in theory, be possible to easily adopt it to
+different database implementation.
+
+In the current implementation, it makes use of PostgreSQL's LISTEN, NOTIFY and
+UNLISTEN features.  A trigger is enabled on the submission queue table, which
+sends a NOTIFY whenever a record is inserted into the table.  The rteval-parser
+daemon listens for these notifications, and will immediately poll the table
+upon such a notification.
+
+Whenever a notification is received, it will always parse all unprocessed
+reports.  In addition it will also only listen for notifications when there
+are no unprocessed reports.
+
+The core PostgreSQL implementation is only done in pgsql.[ch], which provides an
+abstract API layer for the rest of the parser daemon.
+
+
+** Submission queue status codes
+
+In the rteval database's submissionqueue table there is a status field.  The
+daemon will only consider records with status == 0 for processing.  It do not
+consider any other fields.  For a better understanding of the different status
+codes, look into the file statuses.h.
